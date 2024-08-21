@@ -14,11 +14,11 @@ ITERATION_COUNT = 100000
 class InvalidPassword(Exception):
     pass
 
-def encrypt(plaintext: bytes | str, password: str) -> str:
+def encrypt(data_input: bytes | str, password: str) -> str:
     """Decrypts a ciphertext using a password.
 
     Args:
-        plainttext: The data to encrypt. Can be either bytes or str.
+        data_input: The data to encrypt. Can be either bytes or str.
         password: The password to use for encryption.
 
     Returns:
@@ -27,7 +27,7 @@ def encrypt(plaintext: bytes | str, password: str) -> str:
     salt = secrets.token_bytes(16)
     key = derive_key(password, salt)
 
-    plaintext_bytes = plaintext.encode() if isinstance(plaintext, str) else plaintext
+    data_input_bytes = data_input.encode() if isinstance(data_input, str) else data_input
 
     aesgcm = AESGCM(key)
 
@@ -36,7 +36,8 @@ def encrypt(plaintext: bytes | str, password: str) -> str:
     # Can be up to 264 - 1 bits. NEVER REUSE A NONCE with a key.
     nonce = secrets.token_bytes(12) # 96 bits
 
-    ciphertext = aesgcm.encrypt(nonce, plaintext_bytes, b"")
+    # use the salt as the additional authenticated data
+    ciphertext = aesgcm.encrypt(nonce, data_input_bytes, salt)
 
     return (
         f"{base64.b64encode(ciphertext).decode('utf-8')}:"
@@ -65,14 +66,14 @@ def decrypt(ciphertext: str, password: str) -> bytes:
     aesgcm = AESGCM(key)
 
     try:
-        plaintext = aesgcm.decrypt(nonce, ciphertext, b'')
+        data_out = aesgcm.decrypt(nonce, ciphertext, salt)
     except InvalidTag as e:
         raise InvalidPassword("Invalid password")
 
     try:
-        return plaintext.decode('utf-8')
+        return data_out.decode('utf-8')
     except UnicodeDecodeError:
-        return plaintext
+        return data_out
 
 def derive_key(password: str, salt: bytes) -> bytes:
     """Derive a key from a password and salt using PBKDF2-HMAC-SHA256.
