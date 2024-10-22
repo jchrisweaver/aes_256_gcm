@@ -1,6 +1,7 @@
 import argparse
 import base64
 import secrets
+import sys
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.backends import default_backend
@@ -10,6 +11,8 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 KEY_SIZE = 32  # 256 bits
 ITERATION_COUNT = 100000
+
+VERSION = 1 # version of this script
 
 class InvalidPassword(Exception):
     pass
@@ -110,19 +113,27 @@ def change_file_extension(file_name: str, new_extension: str, old_extension: str
     return f"{file_name}.{new_extension}"
 
 def main():
+
     parser = argparse.ArgumentParser(description='Encrypt or decrypt a file')
-    parser.add_argument( '-in', '--input_file', required=True, help='Input filename to encrypt/decrypt' )
-    parser.add_argument( '-d', '--decrypt', action='store_true', default=False, help='Flag to decrypt the file instead of encrypting it' )
-    parser.add_argument( '-p', '--password', required=True, help='Password used for encryption and decryption' )
+
+    # Version argument as an optional flag
+    parser.add_argument('-v', '--version', action='store_true', help='Display the version of the program')
+
+    # File operation arguments
+    parser.add_argument('-in', '--input_file', help='Input filename to encrypt/decrypt')
+    parser.add_argument('-d', '--decrypt', action='store_true', default=False, help='Flag to decrypt the file instead of encrypting it')
+    parser.add_argument('-p', '--password', help='Password used for encryption and decryption')
+
     args = parser.parse_args()
 
-    if not args.input_file:
-        print('Error: Input filename (-in) is required.')
-        return
+    # Check for version request
+    if args.version:
+        print( f"Version { VERSION }")
+        sys.exit()
 
-    if not args.password:
-        print('Error: Password is required')
-        return
+    # Since version wasn't specified, input_file and password must be provided
+    if not args.input_file or not args.password:
+        parser.error("the following arguments are required: -in/--input_file, -p/--password")
 
     try:
         with open(args.input_file, 'rb') as input_file:
